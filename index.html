@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>遊戲媒體聯絡資料庫</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", -apple-system, sans-serif;
+    background: #f7f8fa; color: #1f2937; font-size: 14px; padding: 20px;
+  }
+  header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  h1 { font-size: 20px; font-weight: 700; color: #111827; }
+  .sub { font-size: 12px; color: #6b7280; }
+  .sub a { color: #2563eb; text-decoration: none; }
+  .sub a:hover { text-decoration: underline; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .toolbar input[type="search"] {
+    flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #d1d5db;
+    border-radius: 8px; font-size: 14px; background: #fff; outline: none;
+  }
+  .toolbar input[type="search"]:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+  .toolbar select {
+    padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px;
+    background: #fff; font-size: 13px; color: #374151; cursor: pointer;
+  }
+  .count { font-size: 12px; color: #6b7280; margin-left: auto; white-space: nowrap; }
+  .tablewrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 980px; }
+  thead th {
+    position: sticky; top: 0; background: #f9fafb; text-align: left; font-size: 12px;
+    color: #4b5563; font-weight: 600; padding: 10px 12px; border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  thead th .arrow { color: #9ca3af; font-size: 10px; }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid #f1f3f5; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #f8faff; }
+  .name { font-weight: 600; color: #111827; white-space: nowrap; }
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
+    background: #eef2ff; color: #4338ca; white-space: nowrap;
+  }
+  .tag.hk { background: #fef3c7; color: #92400e; }
+  .type { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; background: #f3f4f6; color: #374151; white-space: nowrap; }
+  td a { color: #2563eb; text-decoration: none; word-break: break-all; }
+  td a:hover { text-decoration: underline; }
+  .desc { color: #4b5563; font-size: 13px; line-height: 1.5; min-width: 260px; }
+  .note { color: #9a6700; margin-top: 4px; font-size: 12px; }
+  .status-cell { font-size: 12px; color: #6b7280; white-space: nowrap; }
+  .empty, .loading, .error { padding: 40px; text-align: center; color: #6b7280; }
+  .error { color: #b91c1c; }
+</style>
+</head>
+<body>
+<header>
+  <h1>遊戲媒體聯絡資料庫</h1>
+  <div class="sub">資料母體：<a href="https://docs.google.com/spreadsheets/d/1KO3JPp0iHR_xed3nfov45-U0_KmNgSf_CICoBXQ8sSk/edit" target="_blank" rel="noopener">Google 試算表・合併版（點此編輯／新增）</a></div>
+</header>
+
+<div class="toolbar">
+  <input type="search" id="q" placeholder="搜尋媒體名稱、Email、定位關鍵字…">
+  <select id="fCountry"><option value="">全部國家</option></select>
+  <select id="fType"><option value="">全部類型</option></select>
+  <select id="fSrc"><option value="">全部來源</option></select>
+  <span class="count" id="count"></span>
+</div>
+
+<div class="tablewrap">
+  <div id="msg" class="loading">載入雲端資料中…</div>
+  <table id="tbl" style="display:none">
+    <thead>
+      <tr>
+        <th data-k="0">媒體名稱 <span class="arrow">↕</span></th>
+        <th data-k="1">國家 <span class="arrow">↕</span></th>
+        <th data-k="3">類型 <span class="arrow">↕</span></th>
+        <th data-k="4">網站</th>
+        <th data-k="5">Email（主）</th>
+        <th data-k="6">Email（備用）</th>
+        <th data-k="7">媒體定位／備註</th>
+        <th data-k="8">狀態 <span class="arrow">↕</span></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<script>
+const SHEET_ID = '1KO3JPp0iHR_xed3nfov45-U0_KmNgSf_CICoBXQ8sSk';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+let rows = [];
+let sortKey = null, sortAsc = true;
+
+// Minimal CSV parser handling quoted fields, embedded commas and newlines
+function parseCSV(text) {
+  const out = []; let row = [], cell = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i+1] === '"') { cell += '"'; i++; }
+        else inQ = false;
+      } else cell += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i+1] === '\n') i++;
+        row.push(cell); cell = '';
+        if (row.some(x => x !== '')) out.push(row);
+        row = [];
+      } else cell += c;
+    }
+  }
+  row.push(cell);
+  if (row.some(x => x !== '')) out.push(row);
+  return out;
+}
+
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function render() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const fc = document.getElementById('fCountry').value;
+  const ft = document.getElementById('fType').value;
+  const fs = document.getElementById('fSrc').value;
+  let list = rows.filter(r => {
+    if (fc && r[1] !== fc) return false;
+    if (ft && r[3] !== ft) return false;
+    if (fs && r[10] !== fs) return false;
+    if (q && !r.join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (sortKey !== null) {
+    list = [...list].sort((a, b) => (a[sortKey]||'').localeCompare(b[sortKey]||'', 'zh-Hant') * (sortAsc ? 1 : -1));
+  }
+  const tb = document.getElementById('tbody');
+  tb.innerHTML = list.map(r => `
+    <tr>
+      <td class="name">${esc(r[0])}</td>
+      <td><span class="tag ${r[1]==='香港'?'hk':''}">${esc(r[1])}</span></td>
+      <td><span class="type">${esc(r[3])}</span></td>
+      <td>${r[4] ? `<a href="${esc(r[4])}" target="_blank" rel="noopener">${esc(r[4].replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,''))}</a>` : ''}</td>
+      <td>${r[5] ? `<a href="mailto:${esc(r[5])}">${esc(r[5])}</a>` : ''}</td>
+      <td>${r[6] ? `<a href="mailto:${esc(r[6])}">${esc(r[6])}</a>` : ''}</td>
+      <td class="desc">${esc(r[7])}${r[9] ? `<div class="note">📝 ${esc(r[9])}</div>` : ''}</td>
+      <td class="status-cell">${esc(r[8] || '—')}</td>
+    </tr>`).join('');
+  document.getElementById('count').textContent = `共 ${list.length} / ${rows.length} 家媒體`;
+  const msg = document.getElementById('msg');
+  msg.style.display = list.length ? 'none' : 'block';
+  msg.textContent = list.length ? '' : '沒有符合條件的媒體';
+  msg.className = 'empty';
+  document.getElementById('tbl').style.display = '';
+}
+
+function fillFilters() {
+  const uniq = i => [...new Set(rows.map(r => r[i]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+  const fill = (id, vals) => {
+    const sel = document.getElementById(id);
+    vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
+  };
+  fill('fCountry', uniq(1));
+  fill('fType', uniq(3));
+  fill('fSrc', uniq(10));
+}
+
+async function load() {
+  try {
+    const res = await fetch(CSV_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const all = parseCSV(await res.text());
+    if (all.length && all[0][0].includes('媒體名稱')) all.shift(); // drop header
+    rows = all.filter(r => r[0]);
+    if (!rows.length) throw new Error('表格無資料');
+    fillFilters();
+    render();
+  } catch (e) {
+    const m = document.getElementById('msg');
+    m.className = 'error';
+    m.textContent = '無法載入試算表：' + e.message + '。請確認試算表已設為「知道連結的使用者：檢視者」。';
+  }
+}
+
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('fCountry').addEventListener('change', render);
+document.getElementById('fType').addEventListener('change', render);
+document.getElementById('fSrc').addEventListener('change', render);
+document.querySelectorAll('thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = Number(th.dataset.k);
+    if (sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = true; }
+    render();
+  });
+});
+load();
+</script>
+</body>
+</html>
