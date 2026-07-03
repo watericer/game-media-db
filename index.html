@@ -1,202 +1,279 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>遊戲媒體聯絡資料庫</title>
+<title>遊戲媒體資料庫 Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+<meta name="description" content="遊戲媒體聯絡資料庫 — KPI、類型分佈、媒體明細">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  :root { color-scheme: light; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", -apple-system, sans-serif;
-    background: #f7f8fa; color: #1f2937; font-size: 14px; padding: 20px;
-  }
-  header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-  h1 { font-size: 20px; font-weight: 700; color: #111827; }
-  .sub { font-size: 12px; color: #6b7280; }
-  .sub a { color: #2563eb; text-decoration: none; }
-  .sub a:hover { text-decoration: underline; }
-  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
-  .toolbar input[type="search"] {
-    flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #d1d5db;
-    border-radius: 8px; font-size: 14px; background: #fff; outline: none;
-  }
-  .toolbar input[type="search"]:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
-  .toolbar select {
-    padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px;
-    background: #fff; font-size: 13px; color: #374151; cursor: pointer;
-  }
-  .count { font-size: 12px; color: #6b7280; margin-left: auto; white-space: nowrap; }
-  .tablewrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 980px; }
-  thead th {
-    position: sticky; top: 0; background: #f9fafb; text-align: left; font-size: 12px;
-    color: #4b5563; font-weight: 600; padding: 10px 12px; border-bottom: 1px solid #e5e7eb;
-    white-space: nowrap; cursor: pointer; user-select: none;
-  }
-  thead th .arrow { color: #9ca3af; font-size: 10px; }
-  tbody td { padding: 10px 12px; border-bottom: 1px solid #f1f3f5; vertical-align: top; }
-  tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover { background: #f8faff; }
-  .name { font-weight: 600; color: #111827; white-space: nowrap; }
-  .tag {
-    display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
-    background: #eef2ff; color: #4338ca; white-space: nowrap;
-  }
-  .tag.hk { background: #fef3c7; color: #92400e; }
-  .type { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; background: #f3f4f6; color: #374151; white-space: nowrap; }
-  td a { color: #2563eb; text-decoration: none; word-break: break-all; }
-  td a:hover { text-decoration: underline; }
-  .desc { color: #4b5563; font-size: 13px; line-height: 1.5; min-width: 260px; }
-  .note { color: #9a6700; margin-top: 4px; font-size: 12px; }
-  .status-cell { font-size: 12px; color: #6b7280; white-space: nowrap; }
-  .empty, .loading, .error { padding: 40px; text-align: center; color: #6b7280; }
-  .error { color: #b91c1c; }
+:root{--bg:#0a0a0a;--bg2:#111113;--bg3:#18181b;--border:rgba(255,255,255,0.08);--accent:#facc15;--green:#4ade80;--yellow:#facc15;--red:#f87171;--blue:#60a5fa;--purple:#a78bfa;--text:#fafaf9;--text-muted:#bbb;--fs:14px;--font-display:'PingFang TC','Noto Serif TC','Georgia',serif;--font-body:'PingFang TC','Noto Sans TC','Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','SF Mono','Menlo',monospace;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);font-size:var(--fs);min-height:100vh}
+/* Header */
+.hdr{background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.hdr-top{padding:0 20px;display:flex;align-items:center;gap:12px;height:46px}
+.hdr-logo{font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-muted);flex-shrink:0}
+.hdr-title{font-size:17px;font-weight:700;font-family:var(--font-display)}
+.hdr-status{margin-left:auto;display:flex;align-items:center;gap:8px}
+.data-ok-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+.sheet-link{font-size:12px;color:var(--accent);text-decoration:none;border:1px solid rgba(250,204,21,.3);border-radius:6px;padding:4px 10px}
+.sheet-link:hover{background:rgba(250,204,21,.08)}
+/* Main */
+.main{padding:20px;max-width:1600px;margin:0 auto}
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.kpi-card{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--kpi-c,var(--accent));border-radius:10px;padding:16px;transition:transform .2s,box-shadow .2s;min-width:0;overflow:hidden}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.kpi-label{font-size:10px;font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px}
+.kpi-val{font-size:24px;font-weight:700;font-family:var(--font-mono);line-height:1.15;margin-bottom:6px}
+.kpi-sub{font-size:11px;color:var(--text-muted)}
+/* Cards & charts */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px}
+.card-title{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px}
+.chart-box{position:relative;height:230px}
+/* Filter pills */
+.pf-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.pf-btn{padding:5px 12px;border-radius:16px;cursor:pointer;font-size:12px;border:1px solid var(--border);color:var(--text-muted);background:var(--bg2);transition:all .2s}
+.pf-btn.active{background:var(--accent);border-color:var(--accent);color:#000;font-weight:700}
+.pf-btn:hover:not(.active){border-color:var(--accent);color:var(--text)}
+.fi{padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;outline:none}
+.fi:focus{border-color:var(--accent)}
+.fs{padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;outline:none;cursor:pointer}
+/* Table */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sh-title{font-size:15px;font-weight:700}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:980px}
+th{background:var(--bg3);padding:9px 11px;text-align:left;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+td{padding:9px 11px;border-bottom:1px solid rgba(255,255,255,0.06);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(250,204,21,.04)}
+td a{color:var(--blue);text-decoration:none;word-break:break-all}
+td a:hover{text-decoration:underline}
+.m-name{font-weight:600;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;background:rgba(96,165,250,.15);color:var(--blue)}
+.tag.hk{background:rgba(245,158,11,.15);color:var(--yellow)}
+.type-tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;background:rgba(255,255,255,.06);color:var(--text-muted);white-space:nowrap}
+.st-warn{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:rgba(239,68,68,.15);color:var(--red);white-space:nowrap}
+.desc{color:var(--text-muted);font-size:12px;line-height:1.6;min-width:260px}
+.note{color:var(--yellow);margin-top:4px;font-size:11px}
+.loading,.error,.empty{padding:40px;text-align:center;color:var(--text-muted)}
+.error{color:var(--red)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:768px){
+  .g3{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .kpi-val{font-size:16px}
+  .main{padding:12px}
+  .card{padding:14px}
+  .hdr-top{padding:0 12px;flex-wrap:wrap;height:auto;min-height:44px}
+}
 </style>
 </head>
 <body>
-<header>
-  <h1>遊戲媒體聯絡資料庫</h1>
-  <div class="sub">資料母體：<a href="https://docs.google.com/spreadsheets/d/1KO3JPp0iHR_xed3nfov45-U0_KmNgSf_CICoBXQ8sSk/edit" target="_blank" rel="noopener">Google 試算表・合併版（點此編輯／新增）</a></div>
-</header>
 
-<div class="toolbar">
-  <input type="search" id="q" placeholder="搜尋媒體名稱、Email、定位關鍵字…">
-  <select id="fCountry"><option value="">全部國家</option></select>
-  <select id="fType"><option value="">全部類型</option></select>
-  <select id="fSrc"><option value="">全部來源</option></select>
-  <span class="count" id="count"></span>
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="hdr-logo">ENVOY</div>
+    <div class="hdr-title">遊戲媒體資料庫</div>
+    <div class="hdr-status">
+      <div class="data-ok-badge" id="ok-badge" style="display:none"><span class="live-dot"></span>Google Sheets</div>
+      <a class="sheet-link" href="https://docs.google.com/spreadsheets/d/1KO3JPp0iHR_xed3nfov45-U0_KmNgSf_CICoBXQ8sSk/edit" target="_blank" rel="noopener">✎ 編輯母體資料</a>
+    </div>
+  </div>
 </div>
 
-<div class="tablewrap">
-  <div id="msg" class="loading">載入雲端資料中…</div>
-  <table id="tbl" style="display:none">
-    <thead>
-      <tr>
-        <th data-k="0">媒體名稱 <span class="arrow">↕</span></th>
-        <th data-k="1">國家 <span class="arrow">↕</span></th>
-        <th data-k="3">類型 <span class="arrow">↕</span></th>
-        <th data-k="4">網站</th>
-        <th data-k="5">Email（主）</th>
-        <th data-k="6">Email（備用）</th>
-        <th data-k="7">媒體定位／備註</th>
-        <th data-k="8">狀態 <span class="arrow">↕</span></th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
+<div class="main">
+
+  <!-- KPI -->
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <!-- Charts -->
+  <div class="g3">
+    <div class="card"><div class="card-title">類型分佈</div><div class="chart-box"><canvas id="c-type"></canvas></div></div>
+    <div class="card"><div class="card-title">地區分佈</div><div class="chart-box"><canvas id="c-region"></canvas></div></div>
+    <div class="card"><div class="card-title">名單來源</div><div class="chart-box"><canvas id="c-src"></canvas></div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="pf-row" id="type-pills"></div>
+  <div class="pf-row">
+    <input type="search" class="fi" id="q" placeholder="🔍 搜尋媒體、Email、關鍵字…" style="flex:1;min-width:200px">
+    <select class="fs" id="fCountry"><option value="">全部地區</option></select>
+    <select class="fs" id="fSrc"><option value="">全部來源</option></select>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <div class="sh">
+      <div class="sh-title">媒體明細</div>
+      <div style="font-size:12px;color:var(--text-muted)" id="count"></div>
+    </div>
+    <div id="msg" class="loading">正在從 Google Sheets 載入資料…</div>
+    <div class="tbl-wrap" id="tblwrap" style="display:none">
+      <table>
+        <thead><tr>
+          <th data-k="0">媒體名稱 ↕</th>
+          <th data-k="1">地區 ↕</th>
+          <th data-k="3">類型 ↕</th>
+          <th>網站</th>
+          <th>Email（主）</th>
+          <th>Email（備用）</th>
+          <th>媒體定位／備註</th>
+          <th data-k="8">狀態 ↕</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 
 <script>
 const SHEET_ID = '1KO3JPp0iHR_xed3nfov45-U0_KmNgSf_CICoBXQ8sSk';
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
-let rows = [];
-let sortKey = null, sortAsc = true;
+const PALETTE = ['#facc15','#60a5fa','#4ade80','#f87171','#a78bfa','#f97316','#14b8a6','#ec4899','#84cc16','#06b6d4','#eab308','#6366f1','#f43f5e','#10b981','#8b5cf6'];
+let rows = [], typeFilter = '', sortKey = null, sortAsc = true;
+const charts = {};
 
-// Minimal CSV parser handling quoted fields, embedded commas and newlines
-function parseCSV(text) {
-  const out = []; let row = [], cell = '', inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQ) {
-      if (c === '"') {
-        if (text[i+1] === '"') { cell += '"'; i++; }
-        else inQ = false;
-      } else cell += c;
-    } else {
-      if (c === '"') inQ = true;
-      else if (c === ',') { row.push(cell); cell = ''; }
-      else if (c === '\n' || c === '\r') {
-        if (c === '\r' && text[i+1] === '\n') i++;
-        row.push(cell); cell = '';
-        if (row.some(x => x !== '')) out.push(row);
-        row = [];
-      } else cell += c;
+function parseCSV(text){
+  const out=[]; let row=[],cell='',inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else inQ=false; } else cell+=c; }
+    else{
+      if(c==='"')inQ=true;
+      else if(c===','){row.push(cell);cell='';}
+      else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n')i++; row.push(cell);cell=''; if(row.some(x=>x!==''))out.push(row); row=[]; }
+      else cell+=c;
     }
   }
-  row.push(cell);
-  if (row.some(x => x !== '')) out.push(row);
+  row.push(cell); if(row.some(x=>x!==''))out.push(row);
   return out;
 }
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function count(arr,i){const m={};arr.forEach(r=>{const k=r[i]||'—';m[k]=(m[k]||0)+1;});return m;}
 
-function esc(s) {
-  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function renderKPI(){
+  const total=rows.length;
+  const tw=rows.filter(r=>r[1]==='台灣').length;
+  const hk=rows.filter(r=>r[1]==='香港').length;
+  const types=new Set(rows.map(r=>r[3]).filter(Boolean)).size;
+  const withMail=rows.filter(r=>r[5]).length;
+  const contacted=rows.filter(r=>r[8]&&r[8]!=='待確認').length;
+  const kpis=[
+    {label:'媒體總數',val:total,sub:`台灣 ${tw}・香港 ${hk}`,c:'var(--accent)'},
+    {label:'媒體類型',val:types,sub:'個分類',c:'var(--blue)'},
+    {label:'可發稿信箱',val:withMail,sub:`佔 ${Math.round(withMail/total*100)}%`,c:'var(--green)'},
+    {label:'已聯絡',val:contacted,sub:`進度 ${Math.round(contacted/total*100)}%（狀態欄追蹤）`,c:'var(--purple)'},
+  ];
+  document.getElementById('kpi-grid').innerHTML=kpis.map(k=>`
+    <div class="kpi-card" style="--kpi-c:${k.c}">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
 }
 
-function render() {
-  const q = document.getElementById('q').value.trim().toLowerCase();
-  const fc = document.getElementById('fCountry').value;
-  const ft = document.getElementById('fType').value;
-  const fs = document.getElementById('fSrc').value;
-  let list = rows.filter(r => {
-    if (fc && r[1] !== fc) return false;
-    if (ft && r[3] !== ft) return false;
-    if (fs && r[10] !== fs) return false;
-    if (q && !r.join(' ').toLowerCase().includes(q)) return false;
+function mkChart(id,type,labels,data,opts={}){
+  if(charts[id])charts[id].destroy();
+  const ctx=document.getElementById(id);
+  charts[id]=new Chart(ctx,{
+    type,
+    data:{labels,datasets:[{data,backgroundColor:labels.map((_,i)=>PALETTE[i%PALETTE.length]),borderColor:'#111113',borderWidth:type==='bar'?0:2,borderRadius:type==='bar'?4:0}]},
+    options:Object.assign({
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:type!=='bar',position:'right',labels:{color:'#bbb',font:{size:11},boxWidth:10,padding:8}}},
+      scales:type==='bar'?{x:{ticks:{color:'#bbb',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#bbb',font:{size:10},precision:0},grid:{color:'rgba(255,255,255,.05)'}}}:undefined
+    },opts)
+  });
+}
+
+function renderCharts(){
+  const t=count(rows,3), r=count(rows,1), s=count(rows,10);
+  const tSorted=Object.entries(t).sort((a,b)=>b[1]-a[1]);
+  mkChart('c-type','bar',tSorted.map(x=>x[0]),tSorted.map(x=>x[1]));
+  mkChart('c-region','doughnut',Object.keys(r),Object.values(r));
+  mkChart('c-src','doughnut',Object.keys(s),Object.values(s));
+}
+
+function renderPills(){
+  const types=Object.entries(count(rows,3)).sort((a,b)=>b[1]-a[1]);
+  const el=document.getElementById('type-pills');
+  el.innerHTML=`<div class="pf-btn ${!typeFilter?'active':''}" data-t="">全部 ${rows.length}</div>`+
+    types.map(([k,v])=>`<div class="pf-btn ${typeFilter===k?'active':''}" data-t="${esc(k)}">${esc(k)} ${v}</div>`).join('');
+  el.querySelectorAll('.pf-btn').forEach(b=>b.addEventListener('click',()=>{typeFilter=b.dataset.t;renderPills();renderTable();}));
+}
+
+function fillSelects(){
+  const uniq=i=>[...new Set(rows.map(r=>r[i]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+  [['fCountry',1],['fSrc',10]].forEach(([id,i])=>{
+    const sel=document.getElementById(id);
+    uniq(i).forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
+  });
+}
+
+function renderTable(){
+  const q=document.getElementById('q').value.trim().toLowerCase();
+  const fc=document.getElementById('fCountry').value;
+  const fs_=document.getElementById('fSrc').value;
+  let list=rows.filter(r=>{
+    if(typeFilter&&r[3]!==typeFilter)return false;
+    if(fc&&r[1]!==fc)return false;
+    if(fs_&&r[10]!==fs_)return false;
+    if(q&&!r.join(' ').toLowerCase().includes(q))return false;
     return true;
   });
-  if (sortKey !== null) {
-    list = [...list].sort((a, b) => (a[sortKey]||'').localeCompare(b[sortKey]||'', 'zh-Hant') * (sortAsc ? 1 : -1));
-  }
-  const tb = document.getElementById('tbody');
-  tb.innerHTML = list.map(r => `
+  if(sortKey!==null)list=[...list].sort((a,b)=>(a[sortKey]||'').localeCompare(b[sortKey]||'','zh-Hant')*(sortAsc?1:-1));
+  document.getElementById('tbody').innerHTML=list.map(r=>`
     <tr>
-      <td class="name">${esc(r[0])}</td>
+      <td class="m-name">${esc(r[0])}</td>
       <td><span class="tag ${r[1]==='香港'?'hk':''}">${esc(r[1])}</span></td>
-      <td><span class="type">${esc(r[3])}</span></td>
-      <td>${r[4] ? `<a href="${esc(r[4])}" target="_blank" rel="noopener">${esc(r[4].replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,''))}</a>` : ''}</td>
-      <td>${r[5] ? `<a href="mailto:${esc(r[5])}">${esc(r[5])}</a>` : ''}</td>
-      <td>${r[6] ? `<a href="mailto:${esc(r[6])}">${esc(r[6])}</a>` : ''}</td>
-      <td class="desc">${esc(r[7])}${r[9] ? `<div class="note">📝 ${esc(r[9])}</div>` : ''}</td>
-      <td class="status-cell">${esc(r[8] || '—')}</td>
+      <td><span class="type-tag">${esc(r[3])}</span></td>
+      <td>${r[4]?`<a href="${esc(r[4])}" target="_blank" rel="noopener">${esc(r[4].replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,''))}</a>`:''}</td>
+      <td>${r[5]?`<a href="mailto:${esc(r[5])}">${esc(r[5])}</a>`:''}</td>
+      <td>${r[6]?`<a href="mailto:${esc(r[6])}">${esc(r[6])}</a>`:''}</td>
+      <td class="desc">${esc(r[7])}${r[9]?`<div class="note">📝 ${esc(r[9])}</div>`:''}</td>
+      <td>${r[8]?`<span class="st-warn">${esc(r[8])}</span>`:'<span style="color:var(--text-muted)">—</span>'}</td>
     </tr>`).join('');
-  document.getElementById('count').textContent = `共 ${list.length} / ${rows.length} 家媒體`;
-  const msg = document.getElementById('msg');
-  msg.style.display = list.length ? 'none' : 'block';
-  msg.textContent = list.length ? '' : '沒有符合條件的媒體';
-  msg.className = 'empty';
-  document.getElementById('tbl').style.display = '';
+  document.getElementById('count').textContent=`${list.length} / ${rows.length} 家媒體`;
+  const msg=document.getElementById('msg');
+  msg.style.display=list.length?'none':'block';
+  if(!list.length){msg.className='empty';msg.textContent='沒有符合條件的媒體';}
+  document.getElementById('tblwrap').style.display='';
 }
 
-function fillFilters() {
-  const uniq = i => [...new Set(rows.map(r => r[i]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
-  const fill = (id, vals) => {
-    const sel = document.getElementById(id);
-    vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
-  };
-  fill('fCountry', uniq(1));
-  fill('fType', uniq(3));
-  fill('fSrc', uniq(10));
-}
-
-async function load() {
-  try {
-    const res = await fetch(CSV_URL);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const all = parseCSV(await res.text());
-    if (all.length && all[0][0].includes('媒體名稱')) all.shift(); // drop header
-    rows = all.filter(r => r[0]);
-    if (!rows.length) throw new Error('表格無資料');
-    fillFilters();
-    render();
-  } catch (e) {
-    const m = document.getElementById('msg');
-    m.className = 'error';
-    m.textContent = '無法載入試算表：' + e.message + '。請確認試算表已設為「知道連結的使用者：檢視者」。';
+async function load(){
+  try{
+    const res=await fetch(CSV_URL);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const all=parseCSV(await res.text());
+    if(all.length&&all[0][0].includes('媒體名稱'))all.shift();
+    rows=all.filter(r=>r[0]);
+    if(!rows.length)throw new Error('表格無資料');
+    document.getElementById('ok-badge').style.display='flex';
+    renderKPI();renderCharts();renderPills();fillSelects();renderTable();
+  }catch(e){
+    const m=document.getElementById('msg');
+    m.className='error';
+    m.textContent='無法載入試算表：'+e.message+'。請確認試算表為「知道連結的使用者可檢視」。';
   }
 }
 
-document.getElementById('q').addEventListener('input', render);
-document.getElementById('fCountry').addEventListener('change', render);
-document.getElementById('fType').addEventListener('change', render);
-document.getElementById('fSrc').addEventListener('change', render);
-document.querySelectorAll('thead th').forEach(th => {
-  th.addEventListener('click', () => {
-    const k = Number(th.dataset.k);
-    if (sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = true; }
-    render();
-  });
-});
+document.getElementById('q').addEventListener('input',renderTable);
+document.getElementById('fCountry').addEventListener('change',renderTable);
+document.getElementById('fSrc').addEventListener('change',renderTable);
+document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{
+  const k=Number(th.dataset.k);
+  if(sortKey===k)sortAsc=!sortAsc;else{sortKey=k;sortAsc=true;}
+  renderTable();
+}));
 load();
 </script>
 </body>
